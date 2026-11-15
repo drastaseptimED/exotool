@@ -1,6 +1,8 @@
 [README.md](https://github.com/user-attachments/files/34875738/README.md)
 # ED ExoTool
 
+Created with Claude Opus 5.5
+
 Watches the Elite Dangerous journal and shows your exobiology samples on a web
 dashboard: current body and sample progress, bio signals in the current system,
 unsold samples with estimated value, and which bodies to revisit after a death.
