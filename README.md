@@ -42,3 +42,4 @@ from the English table, values show as "?" until the first sale.
 Open the database with `sqlite3` or DB Browser for SQLite. Useful tables:
 `samples` (status unsold / sold / lost), `bodies`, `systems`, `deaths`, `scans`
 (every single scan), `learned_values`.
+<img width="1798" height="1866" alt="Exotool" src="https://github.com/user-attachments/assets/0586c84b-9e25-4d44-9f7b-4cf12db5a590" />
