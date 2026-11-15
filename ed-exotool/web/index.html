@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f22">
+<title>ExoTool</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #0d0f22;
+    --panel: #151834;
+    --panel-2: #1b1f40;
+    --line: #2a2f5e;
+    --ink: #e8e6f5;
+    --muted: #9396c0;
+    --faint: #5e6292;
+    --bio: #52d4df;
+    --bio-dim: rgba(82, 212, 223, .14);
+    --credit: #f2a93b;
+    --credit-dim: rgba(242, 169, 59, .14);
+    --loss: #ff6f7d;
+    --loss-dim: rgba(255, 111, 125, .12);
+    --display: "Chakra Petch", "Rajdhani", "Segoe UI", system-ui, sans-serif;
+    --text: "Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--void);
+    color: var(--ink);
+    font: 400 16px/1.45 var(--text);
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  h2 {
+    font: 600 1.05rem/1.2 var(--display);
+    margin: 0 0 14px;
+    color: var(--ink);
+    letter-spacing: .01em;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--bio); outline-offset: 2px; border-radius: 4px; }
+
+  /* top strip */
+  .bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px clamp(14px, 3vw, 28px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font: 700 1.05rem var(--display); }
+  .brand svg { width: 22px; height: 22px; }
+  .cmdr { color: var(--muted); }
+  .live { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .live .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); }
+  .live.ok .dot { background: var(--bio); box-shadow: 0 0 0 4px var(--bio-dim); }
+  .live.down { color: var(--loss); }
+  .live.down .dot { background: var(--loss); }
+
+  /* layout */
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px clamp(14px, 3vw, 28px) 28px;
+    max-width: 1400px; margin: 0 auto;
+  }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+  .wide { grid-column: 1 / -1; }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+
+  /* current position, the one loud element */
+  .here {
+    position: relative; overflow: hidden;
+    padding: 22px 24px 24px;
+    border-left: 3px solid var(--bio);
+    border-radius: 6px 12px 12px 6px;
+  }
+  .here .system { color: var(--muted); font-size: 1.05rem; margin: 0; }
+  .here h1 {
+    font: 700 clamp(2.6rem, 7vw, 4.6rem)/1 var(--display);
+    margin: 6px 0 22px; letter-spacing: -.01em;
+    overflow-wrap: anywhere;
+  }
+  .here h1 .pre { font-size: .42em; font-weight: 600; color: var(--muted); margin-right: .25em; letter-spacing: 0; }
+  .here h1.idle { color: var(--faint); font-size: clamp(2rem, 5vw, 3rem); }
+
+  .tracker { background: var(--panel-2); border-radius: 10px; padding: 16px 18px; }
+  .tracker .species { font: 600 1.35rem/1.2 var(--display); }
+  .tracker .variant { color: var(--muted); margin-left: 8px; }
+  .tracker .where { color: var(--muted); font-size: .92rem; margin-top: 2px; }
+  .segments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 12px; }
+  .segments i { height: 14px; border-radius: 3px; background: var(--line); }
+  .segments i.on { background: var(--bio); }
+  .segments i.fresh { animation: charge .9s ease-out; }
+  @keyframes charge {
+    from { background: #fff; box-shadow: 0 0 18px var(--bio); }
+    to   { background: var(--bio); box-shadow: 0 0 0 transparent; }
+  }
+  .tracker-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; }
+  .tracker-foot .step { font: 600 1.1rem var(--display); }
+  .tracker-foot .dist { color: var(--bio); }
+  .tracker-foot .val { color: var(--credit); }
+  .tracker.empty { color: var(--muted); }
+
+  /* cargo summary */
+  .hold { display: flex; flex-direction: column; gap: 18px; }
+  .hold .big {
+    font: 700 clamp(2.2rem, 5vw, 3.2rem)/1 var(--display);
+    color: var(--credit); margin: 4px 0 6px;
+  }
+  .hold .sub { color: var(--muted); }
+  .hold dl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin: auto 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
+  .hold dt { color: var(--muted); }
+  .hold dd { margin: 0; text-align: right; font-weight: 600; }
+  .hold .note { color: var(--faint); font-size: .85rem; }
+
+  /* bodies in this system */
+  .body-row {
+    display: grid;
+    grid-template-columns: minmax(90px, 140px) minmax(0, 1fr) auto;
+    gap: 6px 18px; align-items: start;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  .body-row:first-of-type { border-top: 0; padding-top: 0; }
+  .body-name { font: 700 1.5rem/1.1 var(--display); }
+  .body-row.current .body-name { color: var(--bio); }
+  .body-row.current .body-name::after { content: "you are here"; display: block; font: 500 .78rem var(--text); color: var(--bio); margin-top: 4px; }
+  .body-facts { color: var(--muted); font-size: .9rem; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--line); font-size: .92rem;
+  }
+  .chip small { color: var(--muted); font-size: .8rem; }
+  .chip.rich { border-color: var(--credit); }
+  .chip.rich small { color: var(--credit); }
+  .chip.done { background: var(--bio-dim); border-color: transparent; }
+  .chip.done::before { content: "✓"; color: var(--bio); font-weight: 700; }
+  .chip.sample { background: transparent; }
+  .body-side { text-align: right; }
+  .pips { display: inline-flex; gap: 4px; margin-bottom: 6px; }
+  .pips i { width: 10px; height: 10px; border-radius: 2px; border: 1.5px solid var(--bio); }
+  .pips i.on { background: var(--bio); }
+  .body-side .val { color: var(--credit); font-weight: 600; }
+  .body-side .left { color: var(--muted); font-size: .85rem; }
+  @media (max-width: 600px) {
+    .body-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .body-row .body-main { grid-column: 1 / -1; grid-row: 2; }
+  }
+
+  /* unsold list */
+  details.sys { border-top: 1px solid var(--line); }
+  details.sys:first-of-type { border-top: 0; }
+  details.sys summary {
+    list-style: none; cursor: pointer;
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline;
+    padding: 12px 0;
+  }
+  details.sys summary::-webkit-details-marker { display: none; }
+  details.sys summary .name { font-weight: 600; }
+  details.sys summary .name::before {
+    content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 10px 2px 2px;
+    border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg); transition: transform .15s;
+  }
+  details.sys[open] summary .name::before { transform: rotate(45deg); }
+  details.sys summary .meta { color: var(--muted); font-size: .9rem; }
+  details.sys summary .val { color: var(--credit); font-weight: 600; }
+  .sample-list { margin: 0 0 12px 1.1em; padding: 0; list-style: none; }
+  .sample-list li { display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; padding: 4px 0; }
+  .sample-list .b { color: var(--muted); }
+  .sample-list .v { color: var(--credit); }
+  .sample-list .var { color: var(--faint); font-size: .88rem; }
+
+  /* lost */
+  .lost { border-color: rgba(255, 111, 125, .35); }
+  .lost h2 { color: var(--loss); }
+  .lost .headline { margin: 0 0 12px; color: var(--muted); }
+  .lost .headline strong { color: var(--ink); }
+  .lost .total { font: 700 1.6rem var(--display); color: var(--loss); }
+  .retrace { list-style: none; margin: 10px 0 0; padding: 0; counter-reset: stop; }
+  .retrace > li { padding: 10px 0 10px 34px; border-top: 1px solid var(--line); position: relative; }
+  .retrace > li::before {
+    counter-increment: stop; content: counter(stop);
+    position: absolute; left: 0; top: 10px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--loss-dim); color: var(--loss);
+    font: 600 .8rem/22px var(--display); text-align: center;
+  }
+  .retrace .where { font-weight: 600; }
+  .retrace .what { color: var(--muted); font-size: .92rem; }
+  details.older { margin-top: 14px; }
+  details.older summary { cursor: pointer; color: var(--muted); }
+
+  .empty { color: var(--muted); margin: 0; }
+  footer { max-width: 1400px; margin: 0 auto; padding: 0 clamp(14px, 3vw, 28px) 28px; color: var(--faint); font-size: .85rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .segments i.fresh { animation: none; }
+    details.sys summary .name::before { transition: none; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#52d4df" stroke-width="2.5"/><path d="M16 25c0-6 0-10-6-14 6 1 6 4 6 8 0-6 2-9 7-10-4 3-7 8-7 16z" fill="#f2a93b"/></svg>
+    ExoTool
+  </div>
+  <div class="cmdr" id="cmdr"></div>
+  <div class="live" id="live" role="status"><span class="dot"></span><span id="liveText">Connecting</span></div>
+</header>
+
+<main>
+  <section class="panel here" id="here" aria-live="polite"></section>
+  <section class="panel hold" id="hold"></section>
+  <section class="panel wide" id="system"></section>
+  <section class="panel" id="unsold"></section>
+  <section class="panel lost" id="lost"></section>
+</main>
+<footer id="footer"></footer>
+
+<script>
+const POLL_MS = 2000;
+const RICH = 10000000;              // genus chips worth 10 M+ base get an amber outline
+const $ = id => document.getElementById(id);
+const openSystems = new Set();      // which unsold systems are expanded
+let lastVersion = null, lastState = null, lastStep = null;
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function cr(n) {
+  if (n == null) return "?";
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + " B";
+  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + " M";
+  if (n >= 1e3) return Math.round(n / 1e3) + " k";
+  return String(n);
+}
+const variantOnly = (v, species) => v ? v.replace(species + " - ", "").replace(species, "").trim() : "";
+const fmtTime = ts => ts ? new Date(ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+function ago(ts) {
+  if (!ts) return "";
+  const m = Math.round((Date.now() - new Date(ts)) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return m + " min ago";
+  const h = Math.round(m / 60);
+  return h < 48 ? h + " h ago" : Math.round(h / 24) + " days ago";
+}
+
+function renderHere(s) {
+  const p = s.in_progress;
+  let tracker;
+  if (p) {
+    const segs = [1, 2, 3].map(i => {
+      const fresh = i === p.step && lastStep !== null && lastStep !== p.step;
+      return `<i class="${i <= p.step ? "on" : ""}${fresh ? " fresh" : ""}"></i>`;
+    }).join("");
+    tracker = `
+      <div class="tracker">
+        <div><span class="species">${esc(p.species_name)}</span><span class="variant">${esc(variantOnly(p.variant_name, p.species_name))}</span></div>
+        ${p.on_this_body ? "" : `<div class="where">Started on ${esc(p.body_name || "another body")}</div>`}
+        <div class="segments" role="img" aria-label="${p.step} of 3 samples">${segs}</div>
+        <div class="tracker-foot">
+          <span class="step num">${p.step} of 3 samples</span>
+          ${p.colony_distance ? `<span class="dist">Next sample at least ${p.colony_distance} m away</span>` : ""}
+          ${p.value ? `<span class="val num">≈ ${cr(p.value)} Cr</span>` : ""}
+        </div>
+      </div>`;
+    lastStep = p.step;
+  } else {
+    tracker = `<div class="tracker empty">No sample in progress. Your first scan of a plant starts the tracker.</div>`;
+    lastStep = null;
+  }
+  const title = s.body
+    ? `<h1><span class="pre">Body</span>${esc(s.body)}</h1>`
+    : `<h1 class="idle">${s.system ? "In space" : "Waiting for the game"}</h1>`;
+  $("here").innerHTML = `
+    <p class="system">${esc(s.system || "Start Elite Dangerous. Your position appears after the first jump or login.")}</p>
+    ${title}
+    ${tracker}`;
+}
+
+function renderHold(s) {
+  const ff = s.footfall.assumed ? `Estimates include the first footfall bonus (×${s.footfall.multiplier}).` : "Estimates without first footfall bonus.";
+  $("hold").innerHTML = `
+    <div>
+      <h2>On board, unsold</h2>
+      <div class="big num">${s.unsold_count ? "≈ " + cr(s.unsold_value) + " Cr" : "0 Cr"}</div>
+      <div class="sub">${s.unsold_count} sample${s.unsold_count === 1 ? "" : "s"} from ${s.unsold_bodies} bod${s.unsold_bodies === 1 ? "y" : "ies"}</div>
+    </div>
+    <dl>
+      <dt>Sold at Vista Genomics</dt><dd class="num">${cr(s.sold_value)} Cr</dd>
+      <dt>Species analysed</dt><dd class="num">${s.species_count}</dd>
+    </dl>
+    <div class="note">${ff}</div>`;
+}
+
+function renderSystem(s) {
+  if (!s.system) { $("system").innerHTML = `<h2>Biology in this system</h2><p class="empty">No system yet.</p>`; return; }
+  if (!s.bodies.length) {
+    $("system").innerHTML = `<h2>Biology in ${esc(s.system)}</h2>
+      <p class="empty">No biological signals known here yet. Scan the system with the FSS; bodies with signals show up here.</p>`;
+    return;
+  }
+  const rows = s.bodies.map(b => {
+    const facts = [b.planet_class, b.atmosphere, b.gravity_g != null ? b.gravity_g + " g" : null,
+                   b.temperature != null ? b.temperature + " K" : null, b.distance_ls != null ? b.distance_ls.toLocaleString() + " ls" : null]
+                  .filter(Boolean).map(esc).join(", ");
+    const doneGenera = new Set(b.samples.map(x => x.genus_name));
+    let chips = b.genuses.map(g => g.done
+      ? `<span class="chip done">${esc(g.name)}</span>`
+      : `<span class="chip${(g.max_base || 0) >= RICH ? " rich" : ""}">${esc(g.name)}${g.max_value ? `<small class="num">up to ${cr(g.max_value)}</small>` : ""}</span>`).join("");
+    // samples whose genus was not in the surface scan list (e.g. no DSS done)
+    chips += b.samples.filter(x => !b.genuses.some(g => g.name === x.genus_name))
+      .map(x => `<span class="chip done sample">${esc(x.species_name)}</span>`).join("");
+    if (!chips) chips = `<span class="body-facts">Map the body with probes to see which genera grow here.</span>`;
+    const done = Math.min(b.samples.length, b.bio_signals || b.samples.length);
+    const total = Math.max(b.bio_signals || 0, b.samples.length);
+    const pips = Array.from({ length: total }, (_, i) => `<i class="${i < done ? "on" : ""}"></i>`).join("");
+    const earned = b.samples.reduce((a, x) => a + (x.value || 0), 0);
+    return `
+      <div class="body-row${b.is_current ? " current" : ""}">
+        <div class="body-name">${esc(b.name)}</div>
+        <div class="body-main">
+          <div class="body-facts">${facts}</div>
+          <div class="chips">${chips}</div>
+        </div>
+        <div class="body-side">
+          <div class="pips" aria-label="${done} of ${total} species sampled">${pips}</div>
+          <div class="left">${total - done ? (total - done) + " to go" : "complete"}</div>
+          ${earned ? `<div class="val num">≈ ${cr(earned)} Cr</div>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+  $("system").innerHTML = `<h2>Biology in ${esc(s.system)}</h2>${rows}`;
+}
+
+function renderUnsold(s) {
+  if (!s.unsold.length) {
+    $("unsold").innerHTML = `<h2>Unsold samples</h2><p class="empty">Nothing on board. A sample is added here after its third scan.</p>`;
+    return;
+  }
+  const html = s.unsold.map(g => {
+    const items = g.bodies.flatMap(b => b.samples.map(x => `
+      <li><span class="b">${esc(b.name)}</span>
+          <span>${esc(x.species_name)} <span class="var">${esc(variantOnly(x.variant_name, x.species_name))}</span></span>
+          <span class="v num">${cr(x.value)}</span></li>`)).join("");
+    return `
+      <details class="sys" data-key="${esc(g.address)}" ${openSystems.has(String(g.address)) ? "open" : ""}>
+        <summary><span><span class="name">${esc(g.name)}</span> <span class="meta">${g.count} sample${g.count === 1 ? "" : "s"}</span></span>
+                 <span class="val num">≈ ${cr(g.value)} Cr</span></summary>
+        <ul class="sample-list">${items}</ul>
+      </details>`;
+  }).join("");
+  $("unsold").innerHTML = `<h2>Unsold samples</h2>${html}`;
+}
+
+function retraceList(d) {
+  // one stop per body, in the order you visited them
+  const stops = [];
+  for (const x of d.samples) {
+    const key = x.system_name + "|" + x.body_name;
+    let stop = stops.find(t => t.key === key);
+    if (!stop) { stop = { key, system: x.system_name, body: x.body_name, full: x.body_full_name, items: [], value: 0 }; stops.push(stop); }
+    stop.items.push(x.species_name);
+    stop.value += x.value || 0;
+  }
+  return `<ol class="retrace">${stops.map(t => `
+    <li><div class="where">${esc(t.system)}, body ${esc(t.body)}</div>
+        <div class="what">${t.items.map(esc).join(", ")} <span class="num">(≈ ${cr(t.value)} Cr)</span></div></li>`).join("")}</ol>`;
+}
+
+function renderLost(s) {
+  if (!s.deaths.length) {
+    $("lost").innerHTML = `<h2>Lost at last death</h2><p class="empty">No samples lost so far. If your ship is destroyed, the bodies to revisit appear here.</p>`;
+    return;
+  }
+  const [last, ...older] = s.deaths;
+  const olderHtml = older.length ? `
+    <details class="older"><summary>Earlier losses (${older.length})</summary>
+      ${older.map(d => `<p class="headline">${esc(fmtTime(d.ts))}: <strong class="num">≈ ${cr(d.value)} Cr</strong></p>${retraceList(d)}`).join("")}
+    </details>` : "";
+  $("lost").innerHTML = `
+    <h2>Lost at last death</h2>
+    <div class="total num">≈ ${cr(last.value)} Cr</div>
+    <p class="headline">${last.samples.length} sample${last.samples.length === 1 ? "" : "s"}, destroyed ${esc(fmtTime(last.ts))}${last.system_name ? " in <strong>" + esc(last.system_name) + "</strong>" : ""}. Revisit these bodies to scan them again:</p>
+    ${retraceList(last)}
+    ${olderHtml}`;
+}
+
+function renderLive(ok) {
+  const live = $("live");
+  live.className = "live " + (ok ? "ok" : "down");
+  if (!ok) { $("liveText").textContent = "ExoTool not reachable"; return; }
+  $("liveText").textContent = lastState && lastState.last_event_ts ? "Live, last game event " + ago(lastState.last_event_ts) : "Live";
+}
+
+function render(s) {
+  $("cmdr").textContent = s.cmdr ? "CMDR " + s.cmdr : "";
+  renderHere(s); renderHold(s); renderSystem(s); renderUnsold(s); renderLost(s);
+  $("footer").textContent = s.dashboard_url ? "Open on your tablet: " + s.dashboard_url : "";
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const s = await r.json();
+    lastState = s;
+    if (s.version !== lastVersion) { lastVersion = s.version; render(s); }
+    renderLive(true);
+  } catch (e) {
+    renderLive(false);
+  } finally {
+    setTimeout(poll, POLL_MS);
+  }
+}
+
+// remember which systems are expanded across refreshes
+$("unsold").addEventListener("toggle", e => {
+  const key = e.target.dataset && e.target.dataset.key;
+  if (!key) return;
+  e.target.open ? openSystems.add(key) : openSystems.delete(key);
+}, true);
+
+poll();
+</script>
+</body>
+</html>
